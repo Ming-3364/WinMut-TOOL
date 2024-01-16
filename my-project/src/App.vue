@@ -3,9 +3,10 @@
   <!-- side bar -->
   <el-aside width="200px">
     <!-- subject selector -->
-    <el-dropdown @command="selectSubject">
+    <el-dropdown @command="selectSubject" style="margin-bottom: 40px;">
       <el-button type="primary">
-        Subject<i class="el-icon-arrow-down el-icon--right">{{ curSubject }}</i>
+        Subject<i class="el-icon-arrow-down el-icon--right"></i>
+        {{ curSubject }}
       </el-button>
       <el-dropdown-menu slot="dropdown">
         <el-dropdown-item command="demo">Demo</el-dropdown-item>
@@ -17,7 +18,7 @@
     </el-dropdown>
 
     <!-- subject foleders -->
-    <el-tree
+    <el-tree style="border: 1px solid #ccc; border-radius: 4px;  box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04)"
         :data="foldersData"
         @node-click="handleFileClick"
       >
@@ -55,7 +56,7 @@
                         v-for="file in foldersData"
                         :label=file.label
                         :key=file.label
-                        :value="file.label"
+                        :value="file.label | reversedMessage"
                       >
                       </el-option>
                     </el-select>
@@ -75,24 +76,6 @@
               </el-form-item>
             </el-form>
             {{ runCaseConfigForm }}
-            <el-form :model="dynamicValidateForm" ref="dynamicValidateForm" label-width="100px" class="demo-dynamic">
-              <el-form-item
-                v-for="(domain, index) in dynamicValidateForm.domains"
-                :label="'域名' + index"
-                :key="domain.key"
-                :prop="'domains.' + index + '.value'"
-                :rules="{
-                  required: true, message: '域名不能为空', trigger: 'blur'
-                }"
-              >
-                <el-input v-model="domain.value" style="width: 100px;"></el-input><el-button @click.prevent="removeDomain(domain)">删除</el-button>
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" @click="submitForm('dynamicValidateForm')">提交</el-button>
-                <el-button @click="addDomain">新增域名</el-button>
-                <el-button @click="resetForm('dynamicValidateForm')">重置</el-button>
-              </el-form-item>
-            </el-form>
           </el-drawer>
         </el-col>
 
@@ -108,34 +91,38 @@
 
       <!-- code -->
       <el-main style="width: 50%;">
-        <el-input
+        <el-input v-if="!sourceFileLoading"
           type="textarea" 
           :rows="32"
-          placeholder="请输入代码"
+          placeholder="Please select a source file."
           v-model="cur_file_content"
           show-password
         ></el-input>
+        <el-skeleton v-else :rows="20" animated />
+      <!-- <el-empty v-else
+        description="Please select a source file."
+      ></el-empty> -->
       </el-main>
 
       <!-- result -->
-      <el-main style="width: 50%;">
+      <el-main style="width: 50%; " >
         <el-tabs type="border-card" stretch="true" style="height: 90%;" >
 
           <!-- OUTPUT -->
-          <el-tab-pane label="OUTPUT" >
-            <el-tabs v-model="activeOutputTab" style="height: 90%;">
+          <el-tab-pane label="OUTPUT" v-loading="running">
+            <el-tabs v-model="activeOutputTab" style="height: 90%;" v-if="Object.keys(mutOutputFilesForRun).length !== 0">
               <el-tab-pane
-                
                 v-for="(mutOutputFilesForCase, caseName, index) in mutOutputFilesForRun"
                 :label="caseName"
                 :name="caseName"
                 :key="index"
+                style="height: 100%;"
               >
                 <!-- tab content -->
                 <el-container style="height: 100%;">
                   <!-- 左侧文件选择栏 -->
-                  <el-aside width="200px" style="height: 100%;">
-                  <el-scrollbar style="height: 100%;">
+                  <el-aside width="200px"  style="height: 100%;">
+                  <el-scrollbar  style="height: 500px;">
                     <el-menu
                       style="height: 100%;"
                       @select="handleMutOutputFileSelect"
@@ -167,29 +154,58 @@
                   <!-- 右侧文件内容显示区域 -->
                   <el-main>
                     <!-- <codemirror v-model="selectedMutOutputContent" :options="editorOptions">{{selectedMutOutputContent}}</codemirror> -->
-                    <el-input
+                    <el-input v-if="!mutOutputLoading"
                       type="textarea"
                       :rows="22"
-                      placeholder="please select a mut output file"
+                      placeholder="Please select a mut output file."
                       v-model="selectedMutOutputContent"
 
-                      :disabled="false">
+                      :disabled="false"
+                    >
                     </el-input>
+                    <el-skeleton v-else :rows="10" animated />
+                    <!-- <el-empty v-else
+                      description="Please select a mut output file."
+                    > -->
+                    <!-- </el-empty> -->
                   </el-main>
                 </el-container>
               </el-tab-pane>
             </el-tabs>
+            <el-empty v-else style="margin-top: 80px;"
+              description="No output, please run first"
+            ></el-empty>
           </el-tab-pane>
           
           <!-- STATS -->
-          <el-tab-pane label="STATS">
+          <el-tab-pane label="STATS" v-loading="running">
             <el-tabs v-model="activeStatTab" style="height: 90%;">
               <el-tab-pane
                 label="Summary"
                 name="Summary"
                 key="Summary"
+                style="height: 90%;"
               >
               {{ runStat.Summary }}
+              <!-- <div> -->
+                <el-table :data="runStat.Summary">
+                  <el-table-column
+                    prop="label"
+                    label=""
+                    width="180">
+                  </el-table-column>
+                  <el-table-column
+                    prop="ms_k2g"
+                    label="ms_k2g"
+                    width="180">
+                  </el-table-column>
+                  <el-table-column
+                    prop="ms_k2c"
+                    label="ms_k2c"
+                    width="180">
+                  </el-table-column>
+                </el-table>
+              <!-- </div> -->
               </el-tab-pane>
 
               <el-tab-pane
@@ -198,8 +214,25 @@
                 :label="caseName"
                 :name="caseName"
                 :key="caseName"
+                style="height: 90%;"
               >
-              {{ caseInfo }}
+              <!-- {{ caseInfo }} -->
+                <el-table :data="caseInfo" 
+                  height="500"
+                  border
+                  show-header="false"
+                >
+                  <el-table-column
+                    prop="label"
+                    label="Label"
+                    width="270">
+                  </el-table-column>
+                  <el-table-column
+                    prop="value"
+                    label="Value"
+                    width="270">
+                  </el-table-column>
+                </el-table>
               </el-tab-pane>
             </el-tabs>
           </el-tab-pane>
@@ -265,6 +298,7 @@ export default {
 
       // code
       cur_file_content: '',
+      sourceFileLoading: false,
 
       // run case config
       runCaseConfigDrawer: false,
@@ -281,158 +315,355 @@ export default {
         },
       ],
 
-      runCaseConfigForm: [
-        {
-          file: 'quick_sort',
-          argv: '11 22 33 44 55 66'
-        }
-      ],
-
-      dynamicValidateForm: {
-        domains: [{
-          value: ''
-        }],
-        email: ''
-      },
+      running: false,
 
       // OUTPUT
       activeOutputTab: 'case_1', // 设置默认激活的标签
-      outputTabsData: [
-        { label: '标签1', name: 'tab1', content: '标签1的内容' },
-        { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        // { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        // { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        // { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        // { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        // { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        // { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        // { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        // { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        // { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        // { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        // { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        // { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        // { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        // { label: '标签2', name: 'tab2', content: '标签2的内容' },
-        // 其他标签数据...
-      ],
-
-      files: ['file1.txt', 'file2.txt', 'file3.txt'],
-      selectedFile: '',
-      fileContent: '',
-      editorOptions: {
-        lineNumbers: true,
-        mode: 'text/plain',
-        theme: 'base16-dark'
-      },
-      
-      mutOutputFilesForRun: {
-        "case_1": {
-              "case_dir": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1",
-              "mutOutputFiles": {
-                  "stdoutcopy": [
-                      {
-                          "name": "mut_output-0-stdoutcopy",
-                          "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-0-stdoutcopy"
-                      },
-                      {
-                          "name": "mut_output-339-stdoutcopy",
-                          "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
-                      },
-                  ]
-          }
-        },
-        "case_2": {
-              "case_dir": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1",
-              "mutOutputFiles": {
-                  "stdoutcopy": [
-                      {
-                          "name": "mut_output-0-stdoutcopy",
-                          "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-0-stdoutcopy"
-                      },
-                      {
-                          "name": "mut_output-339-stdoutcopy",
-                          "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
-                      },
-                  ]
-          }
-        },
-      },
+      mutOutputFilesForRun: {},
+      // mutOutputFilesForRun: {
+      //   "case_1": {
+      //         "case_dir": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1",
+      //         "mutOutputFiles": {
+      //             "stdoutcopy": [
+      //                 {
+      //                     "name": "mut_output-0-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-0-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //             ]
+      //     }
+      //   },
+      //   "case_2": {
+      //         "case_dir": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1",
+      //         "mutOutputFiles": {
+      //             "stdoutcopy": [
+      //                 {
+      //                     "name": "mut_output-0-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-0-stdoutcopy"
+      //                 },
+      //                 {
+      //                     "name": "mut_output-339-stdoutcopy",
+      //                     "path": "/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-15-20-13-05/log/run/case_1/mut_output-339-stdoutcopy"
+      //                 },
+      //             ]
+      //     }
+      //   },
+      // },
       activeFileGroupIndex: '0',
-      selectedMutOutputContent: 'asdfasdf',
+      selectedMutOutputContent: '',
+      mutOutputLoading:false,
 
       // STATS
+      runStat: {},
+      // runStat: {
+      //   "MACases": {
+      //       "case_1": [
+      //           {
+      //               "label": "case_name",
+      //               "value": "./bin/quick_sort 11 22 33 44 55 66"
+      //           },
+      //           {
+      //               "label": "generated",
+      //               "value": 20
+      //           },
+      //           {
+      //               "label": "killed",
+      //               "value": 3
+      //           },
+      //           {
+      //               "label": "uncovered",
+      //               "value": 10
+      //           },
+      //           {
+      //               "label": "covered",
+      //               "value": 10
+      //           },
+      //           {
+      //               "label": "ms_k2g",
+      //               "value": 0.15
+      //           },
+      //           {
+      //               "label": "ms_k2c",
+      //               "value": 0.3
+      //           },
+      //           {
+      //               "label": "killed_by_proc_output",
+      //               "value": 3
+      //           },
+      //           {
+      //               "label": "killed_by_proc_end_status",
+      //               "value": 0
+      //           },
+      //           {
+      //               "label": "killed_by_both",
+      //               "value": 0
+      //           },
+      //           {
+      //               "label": "survived_not_affect_status",
+      //               "value": 7
+      //           },
+      //           {
+      //               "label": "survived_not_affect_output",
+      //               "value": 5
+      //           },
+      //           {
+      //               "label": "survived_by_both",
+      //               "value": 5
+      //           },
+      //           {
+      //               "label": "survived_not_covered",
+      //               "value": 10
+      //           }
+      //       ],
+      //       "case_2": [
+      //           {
+      //               "label": "case_name",
+      //               "value": "./bin/quick_sort 11 22 33 44 55 66"
+      //           },
+      //           {
+      //               "label": "generated",
+      //               "value": 20
+      //           },
+      //           {
+      //               "label": "killed",
+      //               "value": 3
+      //           },
+      //           {
+      //               "label": "uncovered",
+      //               "value": 10
+      //           },
+      //           {
+      //               "label": "covered",
+      //               "value": 10
+      //           },
+      //           {
+      //               "label": "ms_k2g",
+      //               "value": 0.15
+      //           },
+      //           {
+      //               "label": "ms_k2c",
+      //               "value": 0.3
+      //           },
+      //           {
+      //               "label": "killed_by_proc_output",
+      //               "value": 3
+      //           },
+      //           {
+      //               "label": "killed_by_proc_end_status",
+      //               "value": 0
+      //           },
+      //           {
+      //               "label": "killed_by_both",
+      //               "value": 0
+      //           },
+      //           {
+      //               "label": "survived_not_affect_status",
+      //               "value": 7
+      //           },
+      //           {
+      //               "label": "survived_not_affect_output",
+      //               "value": 5
+      //           },
+      //           {
+      //               "label": "survived_by_both",
+      //               "value": 5
+      //           },
+      //           {
+      //               "label": "survived_not_covered",
+      //               "value": 10
+      //           }
+      //       ]
+      //   },
+      //   "Summary": [
+      //       {
+      //           "label": "ms_min",
+      //           "ms_k2c": 0.3,
+      //           "ms_k2g": 0.15
+      //       },
+      //       {
+      //           "label": "ms_med",
+      //           "ms_k2c": 0.3,
+      //           "ms_k2g": 0.15
+      //       },
+      //       {
+      //           "label": "ms_max",
+      //           "ms_k2c": 0.3,
+      //           "ms_k2g": 0.15
+      //       },
+      //       {
+      //           "label": "ms_avg",
+      //           "ms_k2c": 0.3,
+      //           "ms_k2g": 0.15
+      //       }
+      //   ]
+      // },
+
       activeStatTab: 'Summary',
-      runStat: {
-        "MACases": {
-            "case_2": {
-                "case_name": "./bin/demo-fibonacci",
-                "covered": 85,
-                "generated": 85,
-                "killed": 76,
-                "killed_by_both": 20,
-                "killed_by_proc_end_status": 20,
-                "killed_by_proc_output": 76,
-                "ms_k2c": 0.8941176470588236,
-                "ms_k2g": 0.8941176470588236,
-                "survived_by_both": 0,
-                "survived_not_affect_output": 0,
-                "survived_not_affect_status": 9,
-                "survived_not_covered": 0,
-                "uncovered": 0
-            },
-            "case_3": {
-                "case_name": "./bin/demo-mut_output-carrymut",
-                "covered": 39,
-                "generated": 39,
-                "killed": 31,
-                "killed_by_both": 15,
-                "killed_by_proc_end_status": 15,
-                "killed_by_proc_output": 31,
-                "ms_k2c": 0.7948717948717948,
-                "ms_k2g": 0.7948717948717948,
-                "survived_by_both": 0,
-                "survived_not_affect_output": 0,
-                "survived_not_affect_status": 8,
-                "survived_not_covered": 0,
-                "uncovered": 0
-            },
-            "case_4": {
-                "case_name": "./bin/demo-quick_sort",
-                "covered": 373,
-                "generated": 794,
-                "killed": 285,
-                "killed_by_both": 175,
-                "killed_by_proc_end_status": 175,
-                "killed_by_proc_output": 285,
-                "ms_k2c": 0.7640750670241286,
-                "ms_k2g": 0.3589420654911839,
-                "survived_by_both": 12,
-                "survived_not_affect_output": 12,
-                "survived_not_affect_status": 88,
-                "survived_not_covered": 421,
-                "uncovered": 421
-            }
-        },
-        "Summary": {
-            "ms_k2c_avg": 0.8176881696515824,
-            "ms_k2c_max": 0.8941176470588236,
-            "ms_k2c_med": 0.7948717948717948,
-            "ms_k2c_min": 0.7640750670241286,
-            "ms_k2g_avg": 0.6826438358072675,
-            "ms_k2g_max": 0.8941176470588236,
-            "ms_k2g_med": 0.7948717948717948,
-            "ms_k2g_min": 0.3589420654911839
-        }
-      }
+      // runStat: {
+      //   "MACases": {
+      //       "case_2": {
+      //           "case_name": "./bin/demo-fibonacci",
+      //           "covered": 85,
+      //           "generated": 85,
+      //           "killed": 76,
+      //           "killed_by_both": 20,
+      //           "killed_by_proc_end_status": 20,
+      //           "killed_by_proc_output": 76,
+      //           "ms_k2c": 0.8941176470588236,
+      //           "ms_k2g": 0.8941176470588236,
+      //           "survived_by_both": 0,
+      //           "survived_not_affect_output": 0,
+      //           "survived_not_affect_status": 9,
+      //           "survived_not_covered": 0,
+      //           "uncovered": 0
+      //       },
+      //       "case_3": {
+      //           "case_name": "./bin/demo-mut_output-carrymut",
+      //           "covered": 39,
+      //           "generated": 39,
+      //           "killed": 31,
+      //           "killed_by_both": 15,
+      //           "killed_by_proc_end_status": 15,
+      //           "killed_by_proc_output": 31,
+      //           "ms_k2c": 0.7948717948717948,
+      //           "ms_k2g": 0.7948717948717948,
+      //           "survived_by_both": 0,
+      //           "survived_not_affect_output": 0,
+      //           "survived_not_affect_status": 8,
+      //           "survived_not_covered": 0,
+      //           "uncovered": 0
+      //       },
+      //       "case_4": {
+      //           "case_name": "./bin/demo-quick_sort",
+      //           "covered": 373,
+      //           "generated": 794,
+      //           "killed": 285,
+      //           "killed_by_both": 175,
+      //           "killed_by_proc_end_status": 175,
+      //           "killed_by_proc_output": 285,
+      //           "ms_k2c": 0.7640750670241286,
+      //           "ms_k2g": 0.3589420654911839,
+      //           "survived_by_both": 12,
+      //           "survived_not_affect_output": 12,
+      //           "survived_not_affect_status": 88,
+      //           "survived_not_covered": 421,
+      //           "uncovered": 421
+      //       }
+      //   },
+      //   "Summary": {
+      //       "ms_k2c_avg": 0.8176881696515824,
+      //       "ms_k2c_max": 0.8941176470588236,
+      //       "ms_k2c_med": 0.7948717948717948,
+      //       "ms_k2c_min": 0.7640750670241286,
+      //       "ms_k2g_avg": 0.6826438358072675,
+      //       "ms_k2g_max": 0.8941176470588236,
+      //       "ms_k2g_med": 0.7948717948717948,
+      //       "ms_k2g_min": 0.3589420654911839
+      //   }
+      // }
     };
   },
   mounted() {
     // init run case config form
     this.runCaseConfigForm = this.defaultRunCaseConfigForm;
+    this.selectSubject("demo")
   },
+
+
+  filters: {
+
+    reversedMessage: function (str) {
+      // 使用正则表达式匹配末尾的.c或.cpp，并替换为空字符串
+      return str.replace(/\.c$|\.cpp$/, '');
+    },
+
+    capitalize: function (value) {
+      if (!value) return ''
+      value = value.toString()
+      return value.charAt(0).toUpperCase() + value.slice(1)
+    }
+  },
+
+  
 
   methods: {
 
@@ -441,11 +672,13 @@ export default {
     },
 
     handleSelectMutOutputFile(file){
+      this.mutOutputLoading = true
       this.$axios.post('/api/get_file_content', { file_path: file.path })
         .then(response => {
           console.log("get file content", file.path)
           this.selectedMutOutputContent = response.data.content;
           console.log(response.data.content)
+          this.mutOutputLoading = false
         })
         .catch(error => {
           console.error('Error fetching file content:', error);
@@ -453,12 +686,13 @@ export default {
     },
 
     submitRunCaseConfigForm(){
+      this.running = true
       this.$axios.post('/api/web_run', this.runCaseConfigForm)
         .then(response => {
-          alert("run complete")
           this.mutOutputFilesForRun = response.data.mutOutputFilesForRun;
           this.runStat = response.data.runStat
           console.log(response)
+          this.running = false
         })
         .catch(error => {
           console.error('Error fetching file content:', error);
@@ -540,10 +774,13 @@ export default {
     async handleFileClick(data) {
       console.log(data.label)
       console.log(data.path)
+      this.sourceFileLoading = true
       this.$axios.post('/api/get_file_content', { file_path: data.path })
         .then(response => {
           this.cur_file_content = response.data.content;
           console.log(response.data.content)
+          this.sourceFileLoading = false
+
         })
         .catch(error => {
           console.error('Error fetching file content:', error);

@@ -68,7 +68,7 @@ def test_get_mutoutput_file():
 @app.route('/api/testGetRunStatJson')
 def test_get_runstat_json():
     ret = {}
-    ret['data'] = exec_shell.getRunStat("/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/new-subjects/result/tests/AccMutNo-2024-01-15-23-31-32/run")
+    ret['data'] = exec_shell.getRunStat("/home/bjtucs/Desktop/Ming-18811237867/new/WinMutASE21Artifact-main/experiments/web-tool/web-run/2024-01-16-17-42-55/log/run")
     return jsonify(ret)
 
 @app.route('/api/get_demo_src')
