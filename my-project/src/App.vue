@@ -23,6 +23,20 @@
         @node-click="handleFileClick"
       >
     </el-tree>
+    <!-- <el-menu
+      style="height: 100%;"
+      @select="handleMutOutputFileSelect"
+      :default-active="activeFileGroupIndex"
+    >
+    <el-menu-item 
+      v-for="file in files" 
+      :key="file.name" 
+      :index="file.name"
+      @click="handleSelectMutOutputFile(file)"
+    >
+      {{ file.name }}
+    </el-menu-item>
+    </el-menu> -->
   </el-aside>
 
   <!-- run, code, and result -->
@@ -38,12 +52,12 @@
             title="Run Case Config"
             :visible.sync="runCaseConfigDrawer"
             :direction="runCaseConfigDrawerDirection"
-            size='40%'
+            size='55%'
             :before-close="handleClose">
             <el-form :model="runCaseConfigForm" ref="runCaseConfigForm" label-width="100px" class="demo-dynamic">
               <el-form-item
                 v-for="(runCase, index) in runCaseConfigForm"
-                :label="'Case' + index"
+                :label="'Case' + (index+1)"
                 :key="runCase.key"
                 :rules="{
                 }"
@@ -75,7 +89,9 @@
                 <el-button  type="primary" @click="resetRunCase()">重置</el-button>
               </el-form-item>
             </el-form>
-            {{ runCaseConfigForm }}
+            <!-- {{ runCaseConfigForm }}
+            {{ defaultRunCaseConfigForm }} -->
+
           </el-drawer>
         </el-col>
 
@@ -186,7 +202,7 @@
                 key="Summary"
                 style="height: 90%;"
               >
-              {{ runStat.Summary }}
+              <!-- {{ runStat.Summary }} -->
               <!-- <div> -->
                 <el-table :data="runStat.Summary">
                   <el-table-column
@@ -303,15 +319,116 @@ export default {
       // run case config
       runCaseConfigDrawer: false,
       runCaseConfigDrawerDirection: 'ttb',
-      
+      runCaseConfigForm: [],
+      // defaultRunCaseConfigForm: [
+      //   {
+      //     file: 'quick_sort',
+      //     argv: '44 55 66 11 22 33'
+      //   },
+      //   {
+      //     file: 'bubble_sort',
+      //     argv: '44 55 66 11 22 33'
+      //   },
+      //   {
+      //     file: 'reverse_string',
+      //     argv: 'Hello World!'
+      //   },
+      //   {
+      //     file: 'fibonacci',
+      //     argv: '7'
+      //   },
+      //   {
+      //     file: 'mut_output-carrymut',
+      //     argv: ''
+      //   },
+      // ],
       defaultRunCaseConfigForm: [
+        // quick_sort
         {
           file: 'quick_sort',
-          argv: '11 22 33 44 55 66'
+          argv: '42'
         },
         {
           file: 'quick_sort',
-          argv: '11 22 33 44 55 66'
+          argv: '44 55 66 11 22 33'
+        },
+        {
+          file: 'quick_sort',
+          argv: '1 2 3 4 5'
+        },
+        {
+          file: 'quick_sort',
+          argv: '9 8 7 6 5 4 3 2 1'
+        },
+        {
+          file: 'quick_sort',
+          argv: '3 3 1 4 2 2 5 1'
+        },
+        // bubble_sort
+        {
+          file: 'bubble_sort',
+          argv: '42'
+        },
+        {
+          file: 'bubble_sort',
+          argv: '44 55 66 11 22 33'
+        },
+        {
+          file: 'bubble_sort',
+          argv: '1 2 3 4 5'
+        },
+        {
+          file: 'bubble_sort',
+          argv: '9 8 7 6 5 4 3 2 1'
+        },
+        {
+          file: 'bubble_sort',
+          argv: '3 3 1 4 2 2 5 1'
+        },
+        // reverse_string
+        {
+          file: 'reverse_string',
+          argv: 'Hello World!'
+        },
+        {
+          file: 'reverse_string',
+          argv: '""'
+        },
+        {
+          file: 'reverse_string',
+          argv: '123!@#abc'
+        },
+        {
+          file: 'reverse_string',
+          argv: 'This is a long string with multiple words and spaces.'
+        },
+        {
+          file: 'reverse_string',
+          argv: 'aaaa'
+        },
+        {
+          file: 'fibonacci',
+          argv: '7'
+        },
+        {
+          file: 'fibonacci',
+          argv: '1'
+        },
+        {
+          file: 'fibonacci',
+          argv: '2'
+        },
+        {
+          file: 'fibonacci',
+          argv: '3'
+        },
+        {
+          file: 'fibonacci',
+          argv: '4'
+        },
+        {
+          file: 'mut_output-carrymut',
+          argv: ''
         },
       ],
 
@@ -644,7 +761,7 @@ export default {
   },
   mounted() {
     // init run case config form
-    this.runCaseConfigForm = this.defaultRunCaseConfigForm;
+    this.runCaseConfigForm = [].concat(this.defaultRunCaseConfigForm);
     this.selectSubject("demo")
   },
 
