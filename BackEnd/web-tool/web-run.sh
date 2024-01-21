@@ -16,7 +16,7 @@ RAW_SCR_DIR="demo/src"
 cp -r ${RAW_SCR_DIR}/* ${WEB_RUN_DIR_SRC}
 
 # complier dir
-WINMUT_BASE_DIR="$(pwd)/../../cmake-build-release/"
+WINMUT_BASE_DIR="$(pwd)/../../../../cmake-build-release/"
 
 export CFLAGS="-accmut -winmut-no-opt -O2 ${CFLAGS}"   # AccMut algorithm
 # export CFLAGS="-winmut -O2 ${CFLAGS}"   # WinMut algorithm
